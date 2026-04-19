@@ -1,31 +1,88 @@
 const LACARTOONS_BASE = "https://www.lacartoons.com"
 
+const fsPromises = require("fs/promises");
 const cheerio = require("cheerio");
 const streamParser = require("../lib/streamParsing.js");
 
-exports.SearchLACartoons = async function (query) {
-  // As search is tricky, we'll try to find it on the homepage or via categories
-  // For now, let's try a simple fetch with a possible search param
-  const url = `${LACARTOONS_BASE}/?tag=${encodeURIComponent(query)}`;
-  return fetch(url).then(r => r.text()).then(html => {
-    const $ = cheerio.load(html);
-    const results = [];
-    // Based on common patterns in these sites
-    $(".serie-card, .card, .post").each((i, el) => {
-      const title = $(el).find(".title, h2, h3").text().trim();
-      const link = $(el).find("a").attr("href");
-      const poster = $(el).find("img").attr("src");
-      if (title && link && link.includes("/serie/")) {
-        results.push({
-          title,
-          slug: link.split("/").pop(),
-          poster: poster ? (poster.startsWith("http") ? poster : LACARTOONS_BASE + poster) : "",
-          type: "series"
-        });
+exports.GetAiringAnimeFromWeb = async function () {
+  let allSeries = [];
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore && page < 50) { // Limit to 50 pages just in case
+    try {
+      const url = `${LACARTOONS_BASE}/?page=${page}`;
+      const response = await fetch(url);
+      const html = await response.text();
+      const $ = cheerio.load(html);
+      const pageSeries = [];
+
+      $("a[href*='/serie/']").each((i, el) => {
+        const link = $(el).attr("href");
+        if (link && !link.includes("/capitulo/") && !link.includes("/serie/capitulo/")) {
+          const title = $(el).text().trim() || $(el).find("img").attr("alt");
+          const poster = $(el).find("img").attr("src");
+          const slug = link.split("/").pop();
+          
+          if (title && slug) {
+            pageSeries.push({
+              title,
+              slug,
+              poster: poster ? (poster.startsWith("http") ? poster : LACARTOONS_BASE + poster) : "",
+              type: "LACartoons"
+            });
+          }
+        }
+      });
+
+      if (pageSeries.length === 0) {
+        hasMore = false;
+      } else {
+        // Deduplicate
+        const newSeries = pageSeries.filter(ps => !allSeries.some(as => as.slug === ps.slug));
+        if (newSeries.length === 0 && page > 1) {
+          hasMore = false;
+        } else {
+          allSeries = allSeries.concat(newSeries);
+          page++;
+        }
       }
-    });
-    return results;
+    } catch (e) {
+      console.error(`Error fetching LACartoons page ${page}:`, e);
+      hasMore = false;
+    }
+  }
+  return allSeries;
+}
+
+exports.GetAiringAnime = async function () {
+  return fsPromises.readFile('./onair_lacartoons.json').then((data) => JSON.parse(data)).catch((err) => {
+    console.error('\x1b[31mFailed reading LACartoons cache:\x1b[39m ' + err)
+    return this.GetAiringAnimeFromWeb()
+  })
+}
+
+exports.UpdateAiringAnimeFile = function () {
+  return this.GetAiringAnimeFromWeb().then((titles) => {
+    console.log(`\x1b[36mGot ${titles.length} LACartoons titles\x1b[39m, saving to cache`)
+    return fsPromises.writeFile('./onair_lacartoons.json', JSON.stringify(titles))
+  }).then(() => console.log('\x1b[32mLACartoons titles cached successfully!\x1b[39m')
+  ).catch((err) => {
+    console.error('\x1b[31mFailed caching LACartoons titles:\x1b[39m ' + err)
+  })
+}
+
+exports.SearchLACartoons = async function (query) {
+  return this.GetAiringAnime().then(series => {
+    if (!query) return series.slice(0, 20);
+    const fuzzysort = require('fuzzysort');
+    const results = fuzzysort.go(query, series, { key: 'title', threshold: -10000 });
+    return results.map(r => r.obj);
   });
+}
+
+exports.GetFeaturedSeries = function() {
+  return this.GetAiringAnime().then(series => series.slice(0, 24));
 }
 
 exports.GetShowBySlug = async function (slug) {
@@ -96,7 +153,7 @@ exports.GetShowBySlug = async function (slug) {
       poster: poster ? (poster.startsWith("http") ? poster : LACARTOONS_BASE + poster) : "",
       description,
       id: `lacartoons:${slug}`,
-      type: "series"
+      type: "LACartoons"
     };
   });
 }

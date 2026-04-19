@@ -158,7 +158,7 @@ function HandleCatalogRequest(req, res, next) {
         return result.map((anime) => {
           return {
             id: `lacartoons:${anime.slug}`,
-            type: anime.type,
+            type: "LACartoons",
             name: anime.title,
             poster: anime.poster,
             description: anime.overview
@@ -166,7 +166,18 @@ function HandleCatalogRequest(req, res, next) {
         })
       })
     } else {
-      catalogPromise = Promise.resolve([])
+      catalogPromise = lacartoonsAPI.GetFeaturedSeries().then((result) => {
+        console.log('\x1b[36mGot LACartoons metadata for:\x1b[39m', result.length, "featured results")
+        return result.map((anime) => {
+          return {
+            id: `lacartoons:${anime.slug}`,
+            type: "LACartoons",
+            name: anime.title,
+            poster: anime.poster,
+            description: anime.overview
+          }
+        })
+      })
     }
   } else {
     if (res.locals.extraParams && !req.params.videoId.includes("onair")) {

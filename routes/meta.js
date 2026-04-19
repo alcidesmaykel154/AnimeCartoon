@@ -212,4 +212,8 @@ metas.get("/:config/meta/:type/:videoId.json", ParseConfig, HandleMetaRequest)
 //Unconfigured requests
 metas.get("/meta/:type/:videoId.json", HandleMetaRequest)
 
+// Ensure LACartoons is handled for meta requests
+metas.get("/meta/LACartoons/:videoId.json", HandleMetaRequest)
+metas.get("/:config/meta/LACartoons/:videoId.json", ParseConfig, HandleMetaRequest)
+
 module.exports = metas;

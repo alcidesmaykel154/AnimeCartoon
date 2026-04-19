@@ -140,7 +140,15 @@ function HandleStreamRequest(req, res, next) {
         const result = fuzzysort.go(searchTerm, animeFLVitem, {key: 'title', limit: 1, all: true})[0]?.obj || animeFLVitem[0];
         if (result) {
           console.log('\x1b[36mGot LACartoons entry:\x1b[39m', result.title)
-          return lacartoonsAPI.GetItemStreams(result.slug)
+          // For Cinemeta matches, we need to find the specific episode ID
+          return lacartoonsAPI.GetShowBySlug(result.slug).then(meta => {
+            const video = meta.videos.find(v => v.season == (season || 1) && v.episode == (episode || 1)) || meta.videos[0];
+            if (video) {
+              const epId = video.id.split(':')[1];
+              return lacartoonsAPI.GetItemStreams(epId);
+            }
+            return [];
+          })
         }
         return []
       })

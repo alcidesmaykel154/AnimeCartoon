@@ -98,6 +98,9 @@ function ReadManifest() {
           extra: [{ name: "search", isRequired: true }]
         },
         {
+          id: "lacartoons|all", type: "LACartoons", name: "LACartoons"
+        },
+        {
           id: "animeflv|genres", type: "AnimeFLV", name: "AnimeFLV",
           extra: [
             {
@@ -302,7 +305,8 @@ app.listen(process.env.PORT || 3000, () => {
   const animeAV1API = require('./routes/animeav1.js')
   const henaojaraAPI = require('./routes/henaojara.js')
   const tioanimeAPI = require('./routes/tioanime.js')
-  let imports = [animeFLVAPI, animeAV1API, tioanimeAPI, henaojaraAPI]
+  const lacartoonsAPI = require('./routes/lacartoons.js')
+  let imports = [animeFLVAPI, animeAV1API, tioanimeAPI, henaojaraAPI, lacartoonsAPI]
   imports.forEach((api) => {
     api.UpdateAiringAnimeFile().then(() => {
       setInterval(api.UpdateAiringAnimeFile.bind(api), 86400000); //Update every 24h
