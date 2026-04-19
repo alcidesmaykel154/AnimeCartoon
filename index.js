@@ -22,7 +22,23 @@ const manifest = {
       "id": "lacartoons_cat",
       "type": "LACartoons",
       "name": "LACartoons",
-      "extra": [{ "name": "search", "isRequired": false }]
+      "extra": [
+        { "name": "search", "isRequired": false },
+        { 
+          "name": "genre", 
+          "options": [
+            "Nickelodeon",
+            "Cartoon Network",
+            "Fox Kids",
+            "Hanna Barbera",
+            "Disney",
+            "Warner Channel",
+            "Marvel",
+            "Otros"
+          ],
+          "isRequired": false 
+        }
+      ]
     }
   ],
   "resources": ["stream", "meta", "catalog"],
